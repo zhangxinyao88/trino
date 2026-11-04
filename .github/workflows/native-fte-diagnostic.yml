@@ -1,0 +1,61 @@
+name: Native FTE paired diagnostic
+on:
+  push:
+    branches: [codex/trino31762-native-fte-diagnostic]
+    paths: [.github/workflows/native-fte-diagnostic.yml, .github/bin/diagnose-native-fte.sh]
+permissions:
+  contents: read
+concurrency:
+  group: native-fte-paired-diagnostic
+  cancel-in-progress: false
+jobs:
+  paired:
+    if: github.repository == 'zhangxinyao88/trino'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - label: exact-master
+            sha: f7532f393ec5a538dcc6634d9eb35f30795af5c2
+          - label: exact-pr-merge
+            sha: a4c80720ef04074607ffb87b2665ec79a0e1c5cc
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: trinodb/trino
+          ref: ${{ matrix.sha }}
+          path: source
+          persist-credentials: false
+      - name: Verify native host and exact source
+        env:
+          EXPECTED_SHA: ${{ matrix.sha }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test "$(docker info --format '{{.Architecture}}')" = x86_64
+          test "$(git -C source rev-parse HEAD)" = "$EXPECTED_SHA"
+          mkdir evidence
+          { uname -a; lscpu; free -h; df -h .; git -C source rev-parse HEAD; } > evidence/host.txt
+      - name: Build and diagnose default FTE
+        run: |
+          docker run --rm --name native-fte --cpus 4 --memory 12g \
+            --hostname trino-ci --add-host trino-ci:127.0.0.1 \
+            -v "$PWD/source:/source" -v "$PWD/harness:/harness:ro" -v "$PWD/evidence:/evidence" \
+            eclipse-temurin@sha256:952ae4db91699d916ee219f7830c424022c9eb8792d35899af97316b8000a078 \
+            bash /harness/.github/bin/diagnose-native-fte.sh
+      - name: Retain logs, reports and stall snapshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-fte-${{ matrix.label }}
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 0
