@@ -1,4 +1,4 @@
-name: Native FTE paired diagnostic
+name: Native FTE bounded repetition
 on:
   push:
     branches: [codex/trino31762-native-fte-diagnostic]
@@ -12,7 +12,7 @@ jobs:
   paired:
     if: github.repository == 'zhangxinyao88/trino'
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       max-parallel: 2
