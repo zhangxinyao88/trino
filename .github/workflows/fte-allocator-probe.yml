@@ -1,0 +1,42 @@
+name: FTE allocator repair probe
+on:
+  push:
+    branches: [codex/trino-fte-allocator-repair-probe]
+permissions:
+  contents: read
+concurrency:
+  group: fte-allocator-repair-probe
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: github.repository == 'zhangxinyao88/trino'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    env:
+      CONTINUOUS_INTEGRATION: true
+      MAVEN_OPTS: -Xmx512M -XX:+ExitOnOutOfMemoryError
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25.0.5
+      - name: Record native environment
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          mkdir evidence
+          { uname -a; cat /etc/os-release; java -version; lscpu; free -h; git rev-parse HEAD; } > evidence/environment.txt 2>&1
+      - name: Build and capture allocator state
+        run: bash .github/bin/fte-allocator-probe.sh
+      - name: Retain probe results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fte-allocator-probe
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 0

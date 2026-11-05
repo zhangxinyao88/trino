@@ -190,6 +190,22 @@ public class BinPackingNodeAllocatorService
             }, 0, TimeUnit.SECONDS);
         }
 
+        // Fork-only bounded observation; remove before any production fix publication.
+        executor.scheduleWithFixedDelay(() -> {
+            try {
+                log.info("FTE_ALLOCATOR pending=%s fulfilledCount=%s fulfilled=%s nodeMemory=%s activeNodes=%s",
+                        pendingAcquires.values().stream().flatMap(Collection::stream).limit(20)
+                                .map(acquire -> "query=" + acquire.getQueryId() + " status=" + acquire.getLastReservationStatus() + " age=" + acquire.getNotEnoughResourcesPeriod() + " lease=" + acquire.getLease()).toList(),
+                        fulfilledAcquires.size(), fulfilledAcquires.stream().limit(20).toList(),
+                        nodePoolMemoryInfos.get().entrySet().stream().limit(10)
+                                .map(entry -> entry.getKey() + " max=" + entry.getValue().getMaxBytes() + " reserved=" + entry.getValue().getReservedBytes()).toList(),
+                        nodeManager.getActiveNodesSnapshot().getAllNodes());
+            }
+            catch (Throwable e) {
+                log.error(e, "FTE allocator snapshot failed");
+            }
+        }, 30, 30, TimeUnit.SECONDS);
+
         refreshNodePoolMemoryInfos();
         executor.scheduleWithFixedDelay(() -> {
             try {
