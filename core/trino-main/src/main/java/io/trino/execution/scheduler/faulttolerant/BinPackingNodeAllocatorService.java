@@ -196,7 +196,8 @@ public class BinPackingNodeAllocatorService
                 log.info("FTE_ALLOCATOR pending=%s fulfilledCount=%s fulfilled=%s nodeMemory=%s activeNodes=%s",
                         pendingAcquires.values().stream().flatMap(Collection::stream).limit(20)
                                 .map(acquire -> "query=" + acquire.getQueryId() + " status=" + acquire.getLastReservationStatus() + " age=" + acquire.getNotEnoughResourcesPeriod() + " lease=" + acquire.getLease()).toList(),
-                        fulfilledAcquires.size(), fulfilledAcquires.stream().limit(20).toList(),
+                        fulfilledAcquires.size(),
+                        fulfilledAcquires.stream().limit(20).toList(),
                         nodePoolMemoryInfos.get().entrySet().stream().limit(10)
                                 .map(entry -> entry.getKey() + " max=" + entry.getValue().getMaxBytes() + " reserved=" + entry.getValue().getReservedBytes()).toList(),
                         nodeManager.getActiveNodesSnapshot().getAllNodes());
