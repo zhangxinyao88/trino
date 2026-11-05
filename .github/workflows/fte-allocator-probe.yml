@@ -11,7 +11,7 @@ jobs:
   observe:
     if: github.repository == 'zhangxinyao88/trino'
     runs-on: ubuntu-26.04
-    timeout-minutes: 65
+    timeout-minutes: 85
     env:
       CONTINUOUS_INTEGRATION: true
       MAVEN_OPTS: -Xmx512M -XX:+ExitOnOutOfMemoryError
@@ -30,7 +30,7 @@ jobs:
           mkdir evidence
           { uname -a; cat /etc/os-release; java -version; lscpu; free -h; git rev-parse HEAD; } > evidence/environment.txt 2>&1
       - name: Build and capture allocator state
-        run: bash .github/bin/fte-allocator-probe.sh
+        run: bash .github/bin/fte-lease-failure-regression.sh
       - name: Retain probe results
         if: always()
         uses: actions/upload-artifact@v7

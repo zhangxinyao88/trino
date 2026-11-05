@@ -1699,7 +1699,7 @@ public class EventDrivenFaultTolerantQueryScheduler
         public Void onSinkInstanceHandleAcquired(SinkInstanceHandleAcquiredEvent sinkInstanceHandleAcquiredEvent)
         {
             ScheduledTask scheduledTask = new ScheduledTask(sinkInstanceHandleAcquiredEvent.getStageId(), sinkInstanceHandleAcquiredEvent.getPartitionId());
-            PreSchedulingTaskContext context = preSchedulingTaskContexts.removeContext(scheduledTask);
+            PreSchedulingTaskContext context = preSchedulingTaskContexts.getContext(scheduledTask);
             verify(context != null, "expected %s in preSchedulingTaskContexts", scheduledTask);
             verify(context.getNodeLease().getNode().isDone(), "expected node set for %s", scheduledTask);
             verify(context.isWaitingForSinkInstanceHandle(), "expected isWaitingForSinkInstanceHandle set for %s", scheduledTask);
@@ -1711,6 +1711,7 @@ public class EventDrivenFaultTolerantQueryScheduler
             StageExecution stageExecution = getStageExecution(stageId);
 
             Optional<RemoteTask> remoteTask = stageExecution.schedule(partitionId, sinkInstanceHandle, attempt, nodeLease, context.getExecutionClass().isSpeculative());
+            preSchedulingTaskContexts.removeContext(scheduledTask);
             remoteTask.ifPresent(task -> {
                 task.addStateChangeListener(createExchangeSinkInstanceHandleUpdateRequiredListener());
                 task.addStateChangeListener(taskStatus -> {
@@ -2340,6 +2341,10 @@ public class EventDrivenFaultTolerantQueryScheduler
 
         public Optional<RemoteTask> schedule(int partitionId, ExchangeSinkInstanceHandle exchangeSinkInstanceHandle, int attempt, NodeLease nodeLease, boolean speculative)
         {
+            // Fork-only fault injection at the task creation boundary.
+            if (Boolean.getBoolean("trino.test.fail-task-scheduling")) {
+                throw new IllegalStateException("FTE_INJECTED_SCHEDULE_FAILURE");
+            }
             InternalNode node;
             try {
                 // "schedule" should be called when we have node assigned already

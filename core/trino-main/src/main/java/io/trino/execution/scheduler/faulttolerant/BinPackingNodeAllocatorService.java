@@ -470,6 +470,12 @@ public class BinPackingNodeAllocatorService
         return nodeLease;
     }
 
+    // Fork-only exact observation for the failure-injection experiment.
+    public int testingFulfilledAcquiresCount()
+    {
+        return fulfilledAcquires.size();
+    }
+
     @Managed
     @Nested
     public StatsHolder getStats()
