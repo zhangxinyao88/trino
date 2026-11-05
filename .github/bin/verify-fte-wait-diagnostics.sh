@@ -24,7 +24,9 @@ export MAVEN_OPTS='-Xmx512M -XX:+ExitOnOutOfMemoryError'
 run_step format 5m -pl core/trino-main airstyle:check
 run_step focused-tests 10m -pl core/trino-main test -Dair.check.skip-all=true -Dtest=TestPreSchedulingTaskContext,TestBinPackingNodeAllocator
 cp -r core/trino-main/target/surefire-reports /evidence/core-reports
+export MAVEN_OPTS='-Xmx3G -XX:+ExitOnOutOfMemoryError'
 run_step static-checks 15m -pl core/trino-main verify -DskipTests -P ci
 run_step error-prone 15m -pl core/trino-main clean test-compile -Dair.check.skip-all=true -P errorprone-compiler
+export MAVEN_OPTS='-Xmx512M -XX:+ExitOnOutOfMemoryError'
 run_step fte-tests 12m -pl testing/trino-faulttolerant-tests test -Dair.check.skip-all=true -Dsurefire.runOrder.random.seed=400202005801
 cp -r testing/trino-faulttolerant-tests/target/surefire-reports /evidence/fte-reports
