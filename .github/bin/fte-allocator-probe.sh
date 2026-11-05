@@ -35,24 +35,28 @@ watch_test() {
     { cat /proc/meminfo; cat /proc/loadavg; } > "${attempt_dir}/resources-${elapsed}.txt"
   done
 }
-# Five fresh Maven/Surefire JVM invocations per source, with the same seed.
+# Five native repetitions, then one higher-concurrency stress invocation.
 # Stop this source on the first failed invocation and retain its evidence.
 started_tests=$SECONDS
-for attempt in 1; do
+for attempt in 1 2 3 4 5 6; do
+  extra_args=()
+  if ((attempt == 6)); then
+    extra_args=(-Djunit.jupiter.execution.parallel.config.strategy=fixed -Djunit.jupiter.execution.parallel.config.fixed.parallelism=8)
+  fi
   # Reserve a full invocation timeout and collection overhead before starting.
-  if ((SECONDS - started_tests > 1320)); then
+  if ((SECONDS - started_tests > 1800)); then
     printf 'INCOMPLETE: test budget reached before attempt %s\n' "$attempt" > ${probe_evidence}/repetition-status.txt
     exit 125
   fi
   attempt_dir="${probe_evidence}/attempt-${attempt}"
   mkdir -p "$attempt_dir"
   date -u +%FT%TZ > "$attempt_dir/started.txt"
-  printf 'Starting attempt %s of 1\n' "$attempt"
+  printf 'Starting attempt %s of 6\n' "$attempt"
   watch_test &
   watcher=$!
   trap 'kill "$watcher" 2>/dev/null || true' EXIT
   set +e
-  timeout --signal=TERM --kill-after=30s 12m ./mvnw -B -ntp -pl testing/trino-faulttolerant-tests -P default test -Dmaven.source.skip=true -Dair.check.skip-all=true --fail-at-end -Dsurefire.runOrder.random.seed=237457222018 > "$attempt_dir/test.log" 2>&1
+  timeout --signal=TERM --kill-after=30s 12m ./mvnw -B -ntp -pl testing/trino-faulttolerant-tests -P default test -Dmaven.source.skip=true -Dair.check.skip-all=true --fail-at-end -Dsurefire.runOrder.random.seed=237457222018 "${extra_args[@]}" > "$attempt_dir/test.log" 2>&1
   test_rc=$?
   set -e
   kill "$watcher" 2>/dev/null || true
@@ -70,4 +74,4 @@ for attempt in 1; do
     exit "$test_rc"
   fi
 done
-printf 'COMPLETED: 5 of 1 invocations exited zero\n' > ${probe_evidence}/repetition-status.txt
+printf 'COMPLETED: 5 of 6 invocations exited zero\n' > ${probe_evidence}/repetition-status.txt

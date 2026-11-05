@@ -11,7 +11,7 @@ jobs:
   observe:
     if: github.repository == 'zhangxinyao88/trino'
     runs-on: ubuntu-26.04
-    timeout-minutes: 40
+    timeout-minutes: 65
     env:
       CONTINUOUS_INTEGRATION: true
       MAVEN_OPTS: -Xmx512M -XX:+ExitOnOutOfMemoryError
