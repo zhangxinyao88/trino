@@ -30,6 +30,7 @@ import static io.trino.testing.assertions.Assert.assertEventually;
 import static io.trino.tpch.TpchTable.NATION;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TestFteSchedulingFailureLease
         extends AbstractTestQueryFramework
@@ -54,7 +55,8 @@ public class TestFteSchedulingFailureLease
         assertEventually(new Duration(5, SECONDS), () -> assertThat(allocator.testingFulfilledAcquiresCount()).isZero());
         System.setProperty("trino.test.fail-task-scheduling", "true");
         try {
-            assertQueryFails("SELECT count(*) FROM nation", ".*FTE_INJECTED_SCHEDULE_FAILURE.*");
+            assertThatThrownBy(() -> getQueryRunner().execute("SELECT count(*) FROM nation"))
+                    .hasMessageContaining("FTE_INJECTED_SCHEDULE_FAILURE");
         }
         finally {
             System.clearProperty("trino.test.fail-task-scheduling");
