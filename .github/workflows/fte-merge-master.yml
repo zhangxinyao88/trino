@@ -1,0 +1,52 @@
+name: Isolated merge-master FTE
+on:
+  push:
+    branches: [codex/trino31762-merge-master-fte]
+permissions:
+  contents: read
+concurrency:
+  group: isolated-merge-master-fte
+  cancel-in-progress: false
+jobs:
+  fte:
+    if: github.repository == 'zhangxinyao88/trino'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    env:
+      CONTINUOUS_INTEGRATION: true
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: 14830128563e68adb98cce2dc27a9799ab10a223
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25.0.5
+      - name: Record exact source and native environment
+        run: |
+          mkdir evidence
+          test "$(uname -m)" = x86_64
+          { uname -a; cat /etc/os-release; java -version; nproc; git -C source show -s --format=fuller; git -C source rev-list --parents -n 1 HEAD; } > evidence/environment.txt 2>&1
+      - name: Build FTE reactor
+        working-directory: source
+        env:
+          MAVEN_OPTS: -Xmx3G -XX:+ExitOnOutOfMemoryError
+        run: |
+          set -euo pipefail
+          export MAVEN_ARGS="--global-settings $PWD/.mvn/settings-ci.xml -ntp"
+          timeout 20m ./mvnw clean install -B -ntp -T1C -pl testing/trino-faulttolerant-tests -am -DskipTests -Dmaven.source.skip=true -Dair.check.skip-all=true 2>&1 | tee ../evidence/build.log
+      - name: Run default FTE with original failing seed
+        run: bash .github/bin/fte-merge-master.sh
+      - name: Retain evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: isolated-merge-master-fte
+          path: evidence/
+          retention-days: 7
+          compression-level: 0
